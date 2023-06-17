@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:sec="http://www.springframework.org/schema/security"
+       
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/mvc
+                           http://www.springframework.org/schema/mvc/spring-mvc.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/tx
+                           http://www.springframework.org/schema/tx/spring-tx.xsd
+                           http://www.springframework.org/schema/security
+                           http://www.springframework.org/schema/security/spring-security.xsd">
+                           
+
+    <!-- Controller Configuration -->
+    <mvc:annotation-driven />
+    <context:component-scan base-package="main" />
+
+    <!-- View Configuration -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+        <property name="prefix" value="/WEB-INF/views/" />
+        <property name="suffix" value=".jsp" />
+    </bean>
+
+    <!-- DataSource configuration -->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="org.postgresql.Driver" />
+        <property name="url" value="jdbc:postgresql://192.168.110.48:5432/plf_training" />
+        <property name="username" value="plf_training_admin" />
+        <property name="password" value="pff123" />
+    </bean>
+
+    <!-- Hibernate properties -->
+    <bean id="hibernateProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="properties">
+            <props>
+                <prop key="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</prop>
+                <prop key="hibernate.show_sql">true</prop>
+            </props>
+        </property>
+    </bean>
+    
+    <bean id="customAuthenticationProvider" class="org.springframework.security.authentication.dao.DaoAuthenticationProvider">
+    <property name="userDetailsService" ref="customUserDetailsService" />
+</bean>
+    <bean id="customUserDetailsService" class="service.CustomUserDetailsService" />
+    
+    <!-- Define the UserRepository bean -->
+    <bean id="userRepository" class="com.example.UserRepositoryImpl">
+        <!-- Configure any required dependencies for the UserRepository implementation -->
+        <!-- For example, you may need to inject the entityManager -->
+        <constructor-arg ref="entityManager" />
+    </bean>
+
+    <!-- Define the EntityManager bean -->
+    <bean id="entityManager" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="packagesToScan" value="main.Model" />
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+                <property name="showSql" value="true" />
+                <property name="databasePlatform" value="org.hibernate.dialect.PostgreSQLDialect" />
+            </bean>
+        </property>
+    </bean>
+
+    <!-- Spring Security configuration -->
+    <security:http auto-config="true">
+        <security:intercept-url pattern="/login" access="permitAll" />
+        <security:intercept-url pattern="/profile" access="hasAnyRole('developer', 'Support','HR', 'CEO')" />
+        <security:intercept-url pattern="/admin" access="hasRole('HR', 'CEO')" />
+        <!-- Add more URL patterns and access rules as needed -->
+
+        <security:form-login login-page="/login"
+                             default-target-url="/profile"
+                             authentication-failure-url="/login?error=true" />
+
+        <security:logout logout-success-url="/login" />
+        <security:authentication-manager>
+    <security:authentication-provider user-service-ref="customUserDetailsService" />
+</security:authentication-manager>
+
+    </security:http>
+
+    <bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory" />
+    </bean>
+
+    <!-- Enable transactional support -->
+    <tx:annotation-driven transaction-manager="transactionManager" />
+
+</beans>
